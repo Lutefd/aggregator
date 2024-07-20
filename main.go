@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/Lutefd/aggregator/internal/database"
 	"github.com/go-chi/chi/v5"
@@ -20,7 +21,6 @@ type apiConfig struct {
 
 func main() {
 	godotenv.Load()
-
 	portString := os.Getenv("PORT")
 	if portString == "" {
 		log.Fatal("PORT environment variable not set")
@@ -33,11 +33,11 @@ func main() {
 	if err != nil {
 		log.Fatal("cannot connect to database", err)
 	}
-
+	db := database.New(conn)
 	apiCfg := apiConfig{
-		DB: database.New(conn),
+		DB: db,
 	}
-
+	go startScraping(db, 10, 60*time.Minute)
 	router := chi.NewRouter()
 	router.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"https://*", "http://*"},
