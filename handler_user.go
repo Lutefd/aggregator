@@ -41,6 +41,17 @@ func (cfg *apiConfig) handlerGetUser(w http.ResponseWriter, r *http.Request, use
 func (cfg *apiConfig) handlerGetPostsForUser(w http.ResponseWriter, r *http.Request, user database.User) {
 	query := r.URL.Query()
 	limit := query.Get("limit")
+	cachedPosts, ok := cfg.Cache.Get("posts?limit=" + limit + "&user=" + user.ApiKey)
+	if ok {
+		var data []Post
+		err := json.Unmarshal(cachedPosts, &data)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "error getting cached posts")
+			return
+		}
+		respondWithJSON(w, http.StatusOK, data)
+		return
+	}
 	conv, err := strconv.Atoi(limit)
 	parsedLimit := int32(conv)
 	if err != nil {
@@ -54,5 +65,14 @@ func (cfg *apiConfig) handlerGetPostsForUser(w http.ResponseWriter, r *http.Requ
 		respondWithError(w, http.StatusInternalServerError, "error getting posts")
 		return
 	}
-	respondWithJSON(w, http.StatusOK, databasePostsToPosts(posts))
+	returnData := databasePostsToPosts(posts)
+	go func() {
+		marshalledData, err := json.Marshal(returnData)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "error marshalling posts")
+			return
+		}
+		cfg.Cache.Set("posts?limit="+limit, marshalledData)
+	}()
+	respondWithJSON(w, http.StatusOK, returnData)
 }

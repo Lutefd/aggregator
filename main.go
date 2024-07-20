@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Lutefd/aggregator/internal/cache"
 	"github.com/Lutefd/aggregator/internal/database"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
@@ -16,7 +17,8 @@ import (
 )
 
 type apiConfig struct {
-	DB *database.Queries
+	DB    *database.Queries
+	Cache *cache.Cache
 }
 
 func main() {
@@ -33,9 +35,19 @@ func main() {
 	if err != nil {
 		log.Fatal("cannot connect to database", err)
 	}
+
+	maxOpenConns := 25
+	maxIdleConns := 25
+	conn.SetMaxOpenConns(maxOpenConns)
+	conn.SetMaxIdleConns(maxIdleConns)
+	conn.SetConnMaxLifetime(time.Hour)
+
 	db := database.New(conn)
+	cache := cache.NewCache(10 * time.Minute)
+
 	apiCfg := apiConfig{
-		DB: db,
+		DB:    db,
+		Cache: cache,
 	}
 	go startScraping(db, 10, 60*time.Minute)
 	router := chi.NewRouter()
