@@ -20,7 +20,7 @@ RETURNING id, user_id, name, url, created_at, updated_at
 
 type CreateFeedParams struct {
 	ID        uuid.UUID
-	UserID    uuid.NullUUID
+	UserID    uuid.UUID
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Name      string
