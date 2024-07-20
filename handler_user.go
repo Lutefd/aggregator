@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/Lutefd/aggregator/internal/database"
@@ -35,4 +36,23 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 
 func (cfg *apiConfig) handlerGetUser(w http.ResponseWriter, r *http.Request, user database.User) {
 	respondWithJSON(w, http.StatusOK, databaseUserToUser(user))
+}
+
+func (cfg *apiConfig) handlerGetPostsForUser(w http.ResponseWriter, r *http.Request, user database.User) {
+	query := r.URL.Query()
+	limit := query.Get("limit")
+	conv, err := strconv.Atoi(limit)
+	parsedLimit := int32(conv)
+	if err != nil {
+		parsedLimit = int32(10)
+	}
+	posts, err := cfg.DB.GetPostsForUser(r.Context(), database.GetPostsForUserParams{
+		UserID: user.ID,
+		Limit:  parsedLimit,
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "error getting posts")
+		return
+	}
+	respondWithJSON(w, http.StatusOK, databasePostsToPosts(posts))
 }
